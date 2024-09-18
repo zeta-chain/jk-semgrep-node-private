@@ -1,0 +1,27 @@
+version: "3"
+# This docker-compose updates the services to use the old version of the zetanode image
+
+services:
+  zetacore0:
+    image: zetanode:old
+
+  zetacore1:
+    image: zetanode:old
+
+  zetacore2:
+    image: zetanode:old
+
+  zetacore3:
+    image: zetanode:old
+
+  zetaclient0:
+    image: zetanode:old
+
+  zetaclient1:
+    image: zetanode:old
+
+  zetaclient2:
+    image: zetanode:old
+
+  zetaclient3:  
+    image: zetanode:old

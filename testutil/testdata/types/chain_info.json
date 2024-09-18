@@ -1,0 +1,24 @@
+{
+  "chains": [
+    {
+      "chain_id": 42,
+      "network": 0,
+      "network_type": 0,
+      "vm": 0,
+      "consensus": 0,
+      "is_external": false,
+      "cctx_gateway": 0,
+      "name": "foo"
+    },
+    {
+      "chain_id": 84,
+      "network": 1,
+      "network_type": 1,
+      "vm": 1,
+      "consensus": 1,
+      "is_external": true,
+      "cctx_gateway": 1,
+      "name": "bar"
+    }
+  ]
+}

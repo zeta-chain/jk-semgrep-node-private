@@ -1,0 +1,407 @@
+# This docker-compose file configures the localnet environment
+# it contains the following services:
+# - ZetaChain with 2 nodes (zetacore0, zetacore1). When profile set to stress, 4 nodes will be created.
+# - A observer set with 2 clients (zetaclient0, zetaclient1). When profile set to stress, 4 clients will be created.
+# - An Ethereum node (eth)
+# - A secondary optional Ethereum node (eth2) enabled when profile is set to eth2
+# - A Bitcoin node (bitcoin)
+# - A Rosetta API (rosetta)
+# - An orchestrator to manage interaction with the localnet (orchestrator)
+# - An upgrade host to serve binaries for the upgrade tests (upgrade-host). Only enabled when profile is set to upgrade.
+# - An upgrade orchestrator to send the upgrade governance proposal (upgrade-orchestrator). Only enabled when profile is set to upgrade.
+#
+# If you are using third party images in CI, you should copy them into ghcr via https://github.com/zeta-chain/copy-docker-images
+
+networks:
+  mynetwork:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+services:
+  rosetta:
+    image: zetanode:latest
+    container_name: rosetta
+    hostname: rosetta
+    depends_on:
+      zetacore0:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.200
+    entrypoint: ["zetacored", "rosetta", "--tendermint", "zetacore0:26657", "--grpc", "zetacore0:9090", "--network", "athens_101-1", "--blockchain",  "zetacore"]
+    volumes:
+      - ssh:/root/.ssh
+
+  zetacore0:
+    image: zetanode:latest
+    container_name: zetacore0
+    hostname: zetacore0
+    ports:
+      - "1317:1317"
+      - "9545:8545"
+      - "9546:8546"
+      - "26657:26657"
+      - "6060:6060"
+      - "9090:9090"
+    healthcheck:
+      # use the zevm endpoint for the healthcheck as it is the slowest to come up
+      test: ["CMD", "curl", "-f", "-X", "POST", "--data", '{"jsonrpc":"2.0","method":"web3_clientVersion","params":[],"id":67}', "-H", "Content-Type: application/json", "http://localhost:8545"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: ${ZETACORED_START_PERIOD-30s}
+      start_interval: 1s
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.11
+    entrypoint: ["/root/start-zetacored.sh"]
+    environment:
+      - HOTKEY_BACKEND=file
+      - HOTKEY_PASSWORD=password # test purposes only
+      - ZETACORED_IMPORT_GENESIS_DATA=${ZETACORED_IMPORT_GENESIS_DATA-}
+    volumes:
+      - ssh:/root/.ssh
+      - ~/.zetacored/genesis_data:/root/genesis_data
+
+  zetacore1:
+    image: zetanode:latest
+    container_name: zetacore1
+    hostname: zetacore1
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.12
+    entrypoint: ["/root/start-zetacored.sh"]
+    environment:
+      - HOTKEY_BACKEND=file
+      - HOTKEY_PASSWORD=password # test purposes only
+    volumes:
+      - ssh:/root/.ssh
+
+  zetacore2:
+    image: zetanode:latest
+    container_name: zetacore2
+    hostname: zetacore2
+    profiles:
+      - stress
+      - all
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.13
+    entrypoint: ["/root/start-zetacored.sh", "4"]
+    environment:
+      - HOTKEY_BACKEND=file
+      - HOTKEY_PASSWORD=password # test purposes only
+    volumes:
+      - ssh:/root/.ssh
+
+  zetacore3:
+    image: zetanode:latest
+    container_name: zetacore3
+    hostname: zetacore3
+    profiles:
+      - stress
+      - all
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.14
+    entrypoint: ["/root/start-zetacored.sh", "4"]
+    environment:
+      - HOTKEY_BACKEND=file
+      - HOTKEY_PASSWORD=password # test purposes only
+    volumes:
+      - ssh:/root/.ssh
+
+  zetaclient0:
+    image: zetanode:latest
+    container_name: zetaclient0
+    hostname: zetaclient0
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.21
+    entrypoint: /root/start-zetaclientd.sh
+    environment:
+      - ETHDEV_ENDPOINT=http://eth:8545
+      - HOTKEY_BACKEND=file
+      - HOTKEY_PASSWORD=password # test purposes only
+    restart: always
+    volumes:
+      - ssh:/root/.ssh
+      - preparams:/root/preparams
+
+  zetaclient1:
+    image: zetanode:latest
+    container_name: zetaclient1
+    hostname: zetaclient1
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.22
+    entrypoint: /root/start-zetaclientd.sh
+    environment:
+      - ETHDEV_ENDPOINT=http://eth:8545
+      - HOTKEY_BACKEND=file
+      - HOTKEY_PASSWORD=password # test purposes only
+    restart: always
+    volumes:
+      - ssh:/root/.ssh
+      - preparams:/root/preparams
+
+  zetaclient2:
+    image: zetanode:latest
+    container_name: zetaclient2
+    hostname: zetaclient2
+    profiles:
+      - stress
+      - all
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.23
+    entrypoint: /root/start-zetaclientd.sh
+    environment:
+      - HOTKEY_BACKEND=file
+      - HOTKEY_PASSWORD=password # test purposes only
+    volumes:
+      - ssh:/root/.ssh
+      - preparams:/root/preparams
+
+  zetaclient3:
+    image: zetanode:latest
+    container_name: zetaclient3
+    hostname: zetaclient3
+    profiles:
+      - stress
+      - all
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.24
+    entrypoint: /root/start-zetaclientd.sh
+    environment:
+      - HOTKEY_BACKEND=file
+      - HOTKEY_PASSWORD=password # test purposes only
+    volumes:
+      - ssh:/root/.ssh
+      - preparams:/root/preparams
+
+  eth:
+    image: ghcr.io/zeta-chain/ethereum-client-go:v1.10.26
+    container_name: eth
+    hostname: eth
+    ports:
+      - "8545:8545"
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.100
+    entrypoint: ["geth", "--dev", "--http", "--http.addr", "172.20.0.100", "--http.vhosts", "*", "--http.api", "eth,web3,net", "--http.corsdomain", "https://remix.ethereum.org", "--dev.period", "2"]
+
+  eth2:
+    build:
+      context: ./anvil
+    container_name: eth2
+    hostname: eth2
+    profiles:
+      - eth2
+      - all
+    platform: linux/amd64
+    ports:
+      - "8546:8545"
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.102
+
+  bitcoin:
+    image: ghcr.io/zeta-chain/ruimarinho-bitcoin-core:22 # version 23 is not working with btcd 0.22.0 due to change in createwallet rpc
+    container_name: bitcoin
+    hostname: bitcoin
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.101
+    ports:
+      - "18443:18443"
+    command:
+      -printtoconsole
+      -regtest=1
+      -rpcallowip=0.0.0.0/0
+      -rpcbind=0.0.0.0
+      -rpcauth=smoketest:63acf9b8dccecce914d85ff8c044b78b$$5892f9bbc84f4364e79f0970039f88bdd823f168d4acc76099ab97b14a766a99
+      -txindex=1
+
+  solana:
+    image: solana-local:latest
+    container_name: solana
+    hostname: solana
+    profiles:
+      - solana
+      - all
+    ports:
+      - "8899:8899"
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.103
+    entrypoint: ["/usr/bin/start-solana.sh"]
+
+  ton:
+    image: ghcr.io/zeta-chain/ton-docker:a69ea0f
+    container_name: ton
+    hostname: ton
+    profiles:
+      - ton
+      - all
+    ports:
+      - "8111:8000" # sidecar
+      - "4443:4443" # lite client
+    environment:
+      DOCKER_IP: 172.20.0.104
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.104
+
+  orchestrator:
+    image: orchestrator:latest
+    tty: true
+    container_name: orchestrator
+    depends_on:
+      zetacore0:
+        condition: service_healthy
+      eth:
+        condition: service_started
+    hostname: orchestrator
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.2
+    entrypoint: ["/work/start-zetae2e.sh", "local"]
+    environment:
+      - LOCALNET_MODE=${LOCALNET_MODE-}
+      - E2E_ARGS=${E2E_ARGS-}
+      - UPGRADE_HEIGHT=${UPGRADE_HEIGHT-}
+    volumes:
+      - ssh:/root/.ssh
+
+  upgrade-host:
+    image: zetanode:latest
+    container_name: upgrade-host
+    hostname: upgrade-host
+    profiles:
+      - upgrade
+      - all
+    entrypoint: ["/root/start-upgrade-host.sh"]
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.250
+    volumes:
+      - ssh:/root/.ssh
+
+  upgrade-orchestrator:
+    # must run from old node for api compatibility
+    image: zetanode:old
+    container_name: upgrade-orchestrator
+    hostname: upgrade-orchestrator
+    profiles:
+      - upgrade
+      - all
+    entrypoint: ["/root/start-upgrade-orchestrator.sh"]
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.251
+    depends_on:
+      - zetacore0
+      - upgrade-host
+    environment:
+      - UPGRADE_HEIGHT=${UPGRADE_HEIGHT-}
+    volumes:
+      - ssh:/root/.ssh
+
+  grafana:
+    image: grafana/grafana:9.1.7
+    container_name: grafana
+    hostname: grafana
+    profiles:
+      - monitoring
+      - all
+    volumes:
+      - ./grafana/datasource.yaml:/etc/grafana/provisioning/datasources/datasource.yaml
+      - ./grafana/dashboards/:/etc/grafana/provisioning/dashboards
+      - grafana_storage:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.30
+    depends_on:
+      - prometheus
+
+  prometheus:
+    image: prom/prometheus:v2.53.1
+    container_name: prometheus
+    hostname: prometheus
+    profiles:
+      - monitoring
+      - all
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.31
+    depends_on:
+      zetacore0:
+        condition: service_healthy
+
+  zetachain-exporter:
+    image: zetachain/zetachain-exporter:v2.0.6
+    container_name: zetachain-exporter
+    hostname: zetachain-exporter
+    profiles:
+      - monitoring
+      - all
+    ports:
+      - "9015:9015"
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.32
+    environment:
+      - ETH_EVM_URL=http://eth:8545
+      - ZETA_EVM_URL=http://zetacore0:8545
+      - ZETA_LCD_URL=http://zetacore0:1317
+      - ZETA_TENDERMINT_URL=http://zetacore0:26657
+      - ETH_CHAIN_ID=1337
+      - ZETA_CHAIN_ID=7001
+      - REFRESH_INTERVAL=15
+      - FAST_REFRESH_INTERVAL=1
+    depends_on:
+      zetacore0:
+        condition: service_healthy
+      eth:
+        condition: service_started
+
+  loki:
+    container_name: loki
+    image: grafana/loki:3.1.0
+    hostname: loki
+    profiles:
+      - monitoring
+      - all
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.33
+    command: -config.file=/etc/loki/local-config.yaml
+
+  promtail:
+    container_name: promtail
+    image: grafana/promtail:2.9.9
+    hostname: promtail
+    profiles:
+      - monitoring
+      - all
+    networks:
+      mynetwork:
+        ipv4_address: 172.20.0.34
+    volumes:
+      - ./promtail/config.yaml:/etc/promtail/config.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: -config.file=/etc/promtail/config.yaml
+
+volumes:
+  ssh:
+  preparams:
+  grafana_storage:
