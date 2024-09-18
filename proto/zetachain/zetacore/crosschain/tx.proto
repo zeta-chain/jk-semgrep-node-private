@@ -1,0 +1,227 @@
+syntax = "proto3";
+package zetachain.zetacore.crosschain;
+
+import "gogoproto/gogo.proto";
+import "zetachain/zetacore/pkg/chains/chains.proto";
+import "zetachain/zetacore/pkg/coin/coin.proto";
+import "zetachain/zetacore/pkg/proofs/proofs.proto";
+import "zetachain/zetacore/crosschain/rate_limiter_flags.proto";
+import "zetachain/zetacore/crosschain/cross_chain_tx.proto";
+
+option go_package = "github.com/zeta-chain/node/x/crosschain/types";
+
+// Msg defines the Msg service.
+service Msg {
+  rpc AddOutboundTracker(MsgAddOutboundTracker)
+      returns (MsgAddOutboundTrackerResponse);
+  rpc AddInboundTracker(MsgAddInboundTracker)
+      returns (MsgAddInboundTrackerResponse);
+  rpc RemoveOutboundTracker(MsgRemoveOutboundTracker)
+      returns (MsgRemoveOutboundTrackerResponse);
+
+  rpc VoteGasPrice(MsgVoteGasPrice) returns (MsgVoteGasPriceResponse);
+  rpc VoteOutbound(MsgVoteOutbound) returns (MsgVoteOutboundResponse);
+  rpc VoteInbound(MsgVoteInbound) returns (MsgVoteInboundResponse);
+
+  rpc WhitelistERC20(MsgWhitelistERC20) returns (MsgWhitelistERC20Response);
+  rpc UpdateTssAddress(MsgUpdateTssAddress)
+      returns (MsgUpdateTssAddressResponse);
+  rpc MigrateTssFunds(MsgMigrateTssFunds) returns (MsgMigrateTssFundsResponse);
+
+  rpc AbortStuckCCTX(MsgAbortStuckCCTX) returns (MsgAbortStuckCCTXResponse);
+  rpc RefundAbortedCCTX(MsgRefundAbortedCCTX)
+      returns (MsgRefundAbortedCCTXResponse);
+
+  rpc UpdateRateLimiterFlags(MsgUpdateRateLimiterFlags)
+      returns (MsgUpdateRateLimiterFlagsResponse);
+
+  rpc MigrateERC20CustodyFunds(MsgMigrateERC20CustodyFunds)
+      returns (MsgMigrateERC20CustodyFundsResponse);
+
+  rpc UpdateERC20CustodyPauseStatus(MsgUpdateERC20CustodyPauseStatus)
+      returns (MsgUpdateERC20CustodyPauseStatusResponse);
+}
+
+message MsgMigrateTssFunds {
+  string creator = 1;
+  int64 chain_id = 2;
+  string amount = 3 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Uint",
+    (gogoproto.nullable) = false
+  ];
+}
+
+message MsgMigrateTssFundsResponse {}
+
+message MsgUpdateTssAddress {
+  string creator = 1;
+  string tss_pubkey = 2;
+}
+
+message MsgUpdateTssAddressResponse {}
+
+message MsgAddInboundTracker {
+  string creator = 1;
+  int64 chain_id = 2;
+  string tx_hash = 3;
+  pkg.coin.CoinType coin_type = 4;
+  pkg.proofs.Proof proof = 5;
+  string block_hash = 6;
+  int64 tx_index = 7;
+}
+message MsgAddInboundTrackerResponse {}
+
+message MsgWhitelistERC20 {
+  string creator = 1;
+  string erc20_address = 2;
+  int64 chain_id = 3;
+  string name = 4;
+  string symbol = 5;
+  uint32 decimals = 6;
+  int64 gas_limit = 7;
+}
+
+message MsgWhitelistERC20Response {
+  string zrc20_address = 1;
+  string cctx_index = 2;
+}
+
+message MsgAddOutboundTracker {
+  string creator = 1;
+  int64 chain_id = 2;
+  uint64 nonce = 3;
+  string tx_hash = 4;
+  pkg.proofs.Proof proof = 5;
+  string block_hash = 6;
+  int64 tx_index = 7;
+}
+
+message MsgAddOutboundTrackerResponse {
+  bool is_removed =
+      1; // if the tx was removed from the tracker due to no pending cctx
+}
+
+message MsgRemoveOutboundTracker {
+  string creator = 1;
+  int64 chain_id = 2;
+  uint64 nonce = 3;
+}
+
+message MsgRemoveOutboundTrackerResponse {}
+
+message MsgVoteGasPrice {
+  string creator = 1;
+
+  int64 chain_id = 2;
+
+  uint64 price = 3;
+  uint64 priority_fee = 6;
+
+  uint64 block_number = 4;
+
+  reserved 5; // deprecated `string supply`
+}
+
+message MsgVoteGasPriceResponse {}
+
+message MsgVoteOutbound {
+  string creator = 1;
+  string cctx_hash = 2;
+  string observed_outbound_hash = 3;
+  uint64 observed_outbound_block_height = 4;
+  uint64 observed_outbound_gas_used = 10;
+  string observed_outbound_effective_gas_price = 11 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
+    (gogoproto.nullable) = false
+  ];
+  uint64 observed_outbound_effective_gas_limit = 12;
+  string value_received = 5 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Uint",
+    (gogoproto.nullable) = false,
+    (gogoproto.moretags) = "yaml:\"value_received\""
+  ];
+  pkg.chains.ReceiveStatus status = 6;
+  int64 outbound_chain = 7;
+  uint64 outbound_tss_nonce = 8;
+  pkg.coin.CoinType coin_type = 9;
+}
+
+message MsgVoteOutboundResponse {}
+
+message MsgVoteInbound {
+  string creator = 1;
+  string sender = 2;
+  int64 sender_chain_id = 3;
+  string receiver = 4;
+  int64 receiver_chain = 5;
+  //  string zeta_burnt = 6;
+  string amount = 6 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Uint",
+    (gogoproto.nullable) = false
+  ];
+  //  string mMint = 7;
+  string message = 8;
+  string inbound_hash = 9;
+  uint64 inbound_block_height = 10;
+  uint64 gas_limit = 11;
+  pkg.coin.CoinType coin_type = 12;
+  string tx_origin = 13;
+  string asset = 14;
+  // event index of the sent asset in the observed tx
+  uint64 event_index = 15;
+
+  // protocol contract version to use for the cctx workflow
+  ProtocolContractVersion protocol_contract_version = 16;
+
+  // revert options provided by the sender
+  RevertOptions revert_options = 17 [ (gogoproto.nullable) = false ];
+}
+
+message MsgVoteInboundResponse {}
+
+message MsgAbortStuckCCTX {
+  string creator = 1;
+  string cctx_index = 2;
+}
+
+message MsgAbortStuckCCTXResponse {}
+
+message MsgRefundAbortedCCTX {
+  string creator = 1;
+  string cctx_index = 2;
+  string refund_address =
+      3; // if not provided, the refund will be sent to the sender/txOrgin
+}
+
+message MsgRefundAbortedCCTXResponse {}
+
+message MsgUpdateRateLimiterFlags {
+  string creator = 1;
+  RateLimiterFlags rate_limiter_flags = 2 [ (gogoproto.nullable) = false ];
+}
+
+message MsgUpdateRateLimiterFlagsResponse {}
+
+message MsgMigrateERC20CustodyFunds {
+  string creator = 1;
+  int64 chain_id = 2;
+  string new_custody_address = 3;
+  string erc20_address = 4;
+  string amount = 5 [
+    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Uint",
+    (gogoproto.nullable) = false
+  ];
+}
+
+message MsgMigrateERC20CustodyFundsResponse { string cctx_index = 1; }
+
+message MsgUpdateERC20CustodyPauseStatus {
+  string creator = 1;
+  int64 chain_id = 2;
+
+  // pause or unpause
+  // true = pause, false = unpause
+  bool pause = 3;
+}
+
+message MsgUpdateERC20CustodyPauseStatusResponse { string cctx_index = 1; }
