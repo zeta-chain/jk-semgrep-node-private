@@ -4,27 +4,22 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"time"
 )
 
 func main() {
-	// Simulate user input (e.g., from a web request, CLI argument, etc.)
-	userInput := "ls; rm -rf /" // Potentially dangerous input
+	// Another example of untrusted input
+	input := "ping -c 4 google.com; echo hacked"
 
-	// Create a context with a timeout to avoid hanging processes
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
+	ctx := context.Background()
 
-	// Vulnerable code: passing unsanitized user input to exec.CommandContext
-	cmd := exec.CommandContext(ctx, "sh", "-c", userInput)
+	// Vulnerable: input is directly concatenated into the command
+	command := fmt.Sprintf("sh -c %s", input)
+	cmd := exec.CommandContext(ctx, command)
 
-	// Execute the command and capture output
+	// Execute and print the output
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("Error executing command: %v\n", err)
+		fmt.Println("Error:", err)
 	}
-
-	// Print the command output
-	fmt.Printf("Command output: %s\n", output)
+	fmt.Println("Output:", string(output))
 }
-
