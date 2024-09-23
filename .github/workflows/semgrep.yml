@@ -14,11 +14,24 @@ name: Semgrep
 jobs:
   semgrep:
     name: semgrep/ci
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
     container:
       image: returntocorp/semgrep
+
+    if: (github.actor != 'dependabot[bot]')
+    permissions:
+      # required for all workflows
+      security-events: write
+      # for workflows in private repos
+      actions: read
+      contents: read
     steps:
-    - uses: actions/checkout@v4
-    - run: semgrep ci
+      - uses: actions/checkout@v4
+      - run: semgrep ci          
+      - name: Upload SARIF file for GitHub Advanced Security Dashboard
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: semgrep.sarif
+        if: always()
