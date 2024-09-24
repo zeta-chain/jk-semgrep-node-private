@@ -8,7 +8,7 @@ import (
 
 func main() {
 	// Another example of untrusted input
-	input := "ping -c 6 google.com; echo hacked"
+	input := "ping -c 7 google.com; echo hacked"
 
 	ctx := context.Background()
 
