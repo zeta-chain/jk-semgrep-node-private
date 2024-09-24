@@ -1,17 +1,25 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"os/exec"
 )
 
 func main() {
-	// Vulnerable code: hardcoded API key, which should not be in source code
-	apiKey := "12345-SECRET-KEY" // Sensitive information hardcoded
+	// Another example of untrusted input
+	input := "ping -c 4 google.com; echo hacked"
 
-	// Simulate using the key in an API call
-	fmt.Printf("Using API Key: %s\n", apiKey)
+	ctx := context.Background()
 
-	// Log sensitive information (bad practice)
-	log.Printf("Logging sensitive key: %s", apiKey)
+	// Vulnerable: input is directly concatenated into the command
+	command := fmt.Sprintf("sh -c %s", input)
+	cmd := exec.CommandContext(ctx, command)
+
+	// Execute and print the output
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+	fmt.Println("Output:", string(output))
 }
